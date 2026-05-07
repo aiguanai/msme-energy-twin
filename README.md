@@ -166,16 +166,3 @@ Open **http://localhost:5173** in your browser.
 Interactive API docs: **http://localhost:8080/docs**
 
 ---
-
-## Data
-
-Source: `Project_Calcs` sheet of `msme_data.xlsx` — 59 days (January–February 2026) with real production values, EB/DG units, cost, and CO₂ pre-computed by the team.
-
-| KPI | Value |
-|---|---|
-| Total Energy | 526,625 kWh |
-| Total Cost | Rs 3,230,130 |
-| CO₂ Emissions | 6,256 kg |
-| Grid Utilisation | 98.5% |
-| DG Activation Days | 6 |
-| Safe Grid Limit | 9,742 kWh (derived from data) |
