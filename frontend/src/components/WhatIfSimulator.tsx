@@ -55,12 +55,12 @@ export default function WhatIfSimulator() {
 
         <div>
           <label className="text-[12px] text-slate-400 font-medium block mb-2">Day of Week</label>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="flex flex-row gap-1">
             {DAYS.map((d, i) => (
               <button
                 key={i}
                 onClick={() => setDayOfWeek(i)}
-                className={`py-1.5 rounded-lg text-[10px] font-medium transition-all ${
+                className={`flex-1 py-1.5 rounded-lg text-[10px] font-medium transition-all whitespace-nowrap ${
                   dayOfWeek === i
                     ? 'bg-cyan-400/20 border border-cyan-400/40 text-cyan-400'
                     : 'bg-white/[0.03] border border-white/[0.06] text-slate-500 hover:text-slate-300'
@@ -101,8 +101,8 @@ export default function WhatIfSimulator() {
         <div className="rounded-xl bg-amber-500/8 border border-amber-500/20 px-4 py-3">
           <p className="text-[12px] text-amber-400 font-semibold">⚠ Grid Limit Exceeded</p>
           <p className="text-[12px] text-slate-400 mt-0.5">
-            At {production.toLocaleString('en-IN')} units, predicted demand exceeds the 9,000 kWh
-            safe grid limit. DG will activate at higher cost.
+            At {production.toLocaleString('en-IN')} units, predicted demand exceeds the safe grid
+            limit. DG will activate at higher cost.
           </p>
         </div>
       )}
