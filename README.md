@@ -8,14 +8,27 @@ An interdisciplinary project that builds an intelligent energy management system
 
 ## What This Repo Builds
 
-A full-stack web application that wraps the trained ML models into a live, interactive dashboard:
+A full-stack web application that wraps trained ML models into a live, interactive decision-support dashboard:
 
-- **AI Forecast** — Predicts tomorrow's energy demand using an XGBoost time-series model trained on historical EB/DG data
-- **Load Balancing** — Compares grid-only vs DG-triggered cost, calculates savings from load shifting
-- **Schedule Advisor** — Recommends an hour-by-hour production schedule to stay within the safe grid limit (9,000 kWh)
-- **What-If Simulator** — Drag a slider to any production target; Random Forest predicts energy, DG need, cost and CO₂ in real time
-- **Anomaly Detection** — Flags days with consumption deviating >2σ from the 7-day rolling mean
-- **KPI Dashboard** — Animated summary cards for total energy, cost, CO₂, grid utilisation, and DG days
+- **KPI Dashboard** — Animated summary cards for total energy, cost, CO₂, grid utilisation, and DG activation days
+- **Energy Trend** — 30-day area chart showing EB, DG, and total consumption history
+- **AI Forecast** — LSTM time-series model predicts tomorrow's energy demand with a SAFE / DG Risk status badge
+- **Load Balancing** — Cost comparison between unoptimised (DG-triggered) and optimised (load-shifted) plans with exact savings
+- **AI Schedule Advisor** — Hour-by-hour production load recommendations with plain-English operational guidance
+- **What-If Simulator** — Interactive slider + day-of-week selector; Random Forest predicts energy, DG probability, cost and CO₂ live
+- **Anomaly Detection** — Line chart flagging days with consumption deviating >2σ from the 7-day rolling mean
+
+---
+
+## ML Models Used
+
+| Model | Type | Purpose |
+|---|---|---|
+| Random Forest Regressor | sklearn | Predicts energy demand from production target |
+| Random Forest Classifier | sklearn | Classifies whether DG will activate |
+| LSTM (50 units, 3-day lookback) | TensorFlow / Keras | Time-series forecast of next-day energy demand |
+
+Safe Grid Limit is derived from data: **95% × max observed EB energy** — not hardcoded.
 
 ---
 
@@ -24,8 +37,9 @@ A full-stack web application that wraps the trained ML models into a live, inter
 **Backend**
 - Python 3.11
 - FastAPI + Uvicorn
+- TensorFlow / Keras (LSTM forecaster)
 - scikit-learn (Random Forest Regressor + Classifier)
-- XGBoost (time-series energy forecaster)
+- XGBoost
 - pandas, openpyxl
 
 **Frontend**
@@ -41,13 +55,13 @@ A full-stack web application that wraps the trained ML models into a live, inter
 ```
 msme-energy-twin/
 ├── backend/
-│   ├── data.py          # Loads msme_data.xlsx, computes KPIs, anomaly detection
-│   ├── models.py        # Trains RF + XGBoost models at startup
+│   ├── data.py          # Loads msme_data.xlsx, computes KPIs + dynamic safe grid limit
+│   ├── models.py        # Trains RF (Cell 0) + XGBoost + LSTM (Cell 1) at startup
 │   ├── main.py          # FastAPI app — 6 REST endpoints
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── api/client.ts          # Typed fetch wrappers
+│   │   ├── api/client.ts          # Typed fetch wrappers for all endpoints
 │   │   ├── components/
 │   │   │   ├── Header.tsx
 │   │   │   ├── KPICard.tsx
@@ -81,14 +95,28 @@ msme-energy-twin/
 └── msme_data.xlsx   ← place here
 ```
 
-### 2. Install backend dependencies
+### 2. Create and activate a virtual environment
 
 ```bash
 cd backend
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Mac/Linux
+source venv/bin/activate
+```
+
+### 3. Install backend dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 3. Install frontend dependencies
+> Note: `tensorflow` is included and required for the LSTM model. Installation may take a few minutes.
+
+### 4. Install frontend dependencies
 
 ```bash
 cd frontend
@@ -104,12 +132,14 @@ Open **two terminals** from the project root.
 **Terminal 1 — Backend**
 ```bash
 cd backend
+venv\Scripts\activate      # Windows
 uvicorn main:app --reload --port 8080
 ```
 
-The server starts, loads the data, and trains the models. You should see:
+On startup you will see:
 ```
-[DigiTwin] Loaded 59 records — models ready.
+[DigiTwin] LSTM trained successfully.
+[DigiTwin] Loaded 59 records — Safe Grid Limit: 9742.25 kWh — models ready.
 ```
 
 **Terminal 2 — Frontend**
@@ -127,15 +157,25 @@ Open **http://localhost:5173** in your browser.
 | Endpoint | Description |
 |---|---|
 | `GET /api/kpis` | Baseline KPIs — total energy, cost, CO₂, grid %, DG days |
-| `GET /api/history` | Full daily history for trend charts |
-| `GET /api/forecast` | XGBoost next-day demand prediction + load-shift recommendation |
-| `GET /api/schedule` | Hourly load schedule optimised against forecast |
-| `GET /api/whatif?production=4500` | RF prediction for any production scenario |
+| `GET /api/history` | Full daily history for energy trend charts |
+| `GET /api/forecast` | LSTM next-day demand prediction + load-shift recommendation |
+| `GET /api/schedule` | Hourly production schedule optimised against forecast |
+| `GET /api/whatif?production=4500` | RF prediction for any production + day-of-week scenario |
 | `GET /api/anomalies` | Days flagged as anomalous (>2σ from 7-day rolling mean) |
 
-Interactive API docs available at **http://localhost:8080/docs** when the backend is running.
+Interactive API docs: **http://localhost:8080/docs**
 
 ---
 
 ## Data
-We used the `Project_Calcs` sheet of `msme_data.xlsx` with production values, EB/DG units, cost, and CO₂ pre-computed.
+
+Source: `Project_Calcs` sheet of `msme_data.xlsx` — 59 days (January–February 2026) with real production values, EB/DG units, cost, and CO₂ pre-computed by the team.
+
+| KPI | Value |
+|---|---|
+| Total Energy | 526,625 kWh |
+| Total Cost | Rs 3,230,130 |
+| CO₂ Emissions | 6,256 kg |
+| Grid Utilisation | 98.5% |
+| DG Activation Days | 6 |
+| Safe Grid Limit | 9,742 kWh (derived from data) |
