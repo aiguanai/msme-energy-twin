@@ -14,8 +14,8 @@ class EnergyModels:
         self._next_is_weekend: int = 0
 
     def train(self, df: pd.DataFrame) -> None:
-        # Random Forest — same as notebook Cell 0
-        features = ["Production", "DayOfWeek", "IsWeekend"]
+        # Random Forest — production only (day features removed from what-if)
+        features = ["Production"]
         X = df[features]
 
         self.rf_regressor = RandomForestRegressor(n_estimators=100, random_state=42)
@@ -59,12 +59,9 @@ class EnergyModels:
         )
         return float(self.xgb_forecaster.predict(X)[0])
 
-    def predict_whatif(self, production: int, day_of_week: int = 2) -> tuple[float, int, float]:
+    def predict_whatif(self, production: int) -> tuple[float, int, float]:
         assert self.rf_regressor is not None and self.rf_classifier is not None
-        is_weekend = 1 if day_of_week >= 5 else 0
-        X = pd.DataFrame(
-            [{"Production": production, "DayOfWeek": day_of_week, "IsWeekend": is_weekend}]
-        )
+        X = pd.DataFrame([{"Production": production}])
         energy = float(self.rf_regressor.predict(X)[0])
         dg_active = int(self.rf_classifier.predict(X)[0])
         dg_prob = float(self.rf_classifier.predict_proba(X)[0][1])

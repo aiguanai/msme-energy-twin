@@ -108,11 +108,8 @@ def get_schedule():
 
 
 @app.get("/api/whatif")
-def get_whatif(
-    production: int = Query(default=4500, ge=1000, le=8000),
-    day_of_week: int = Query(default=2, ge=0, le=6),
-):
-    energy, dg_active, dg_prob = models.predict_whatif(production, day_of_week)
+def get_whatif(production: int = Query(default=4500, ge=1000, le=8000)):
+    energy, dg_active, dg_prob = models.predict_whatif(production)
     safe = energy <= SAFE_GRID_LIMIT
 
     eb_units = min(energy, SAFE_GRID_LIMIT) if dg_active else energy
