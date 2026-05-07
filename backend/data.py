@@ -10,10 +10,15 @@ SHEET = "Project_Calcs"
 COL_IDX  = [0, 2, 3, 4, 5, 8, 9]
 COL_NAMES = ["Date", "Production", "EB_Units", "DG_Units", "Total_Energy", "Cost_RS", "CO2_kg"]
 
-EB_RATE         = 6
-DG_RATE         = 15
-CO2_FACTOR      = 0.8
-SAFE_GRID_LIMIT = 9000
+EB_RATE      = 6
+DG_RATE      = 15
+CO2_FACTOR   = 0.8
+SAFETY_MARGIN = 0.95  # 5% below max observed EB energy
+
+
+def safe_grid_limit(df: pd.DataFrame) -> float:
+    """Safe Grid Limit = 95% × max observed EB energy from data."""
+    return round(SAFETY_MARGIN * float(df["EB_Units"].max()), 2)
 
 
 def load_data() -> pd.DataFrame:
@@ -59,5 +64,5 @@ def compute_kpis(df: pd.DataFrame) -> dict:
         "total_days":       len(df),
         "eb_rate":          EB_RATE,
         "dg_rate":          DG_RATE,
-        "safe_grid_limit":  SAFE_GRID_LIMIT,
+        "safe_grid_limit":  safe_grid_limit(df),
     }

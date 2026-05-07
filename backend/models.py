@@ -1,67 +1,104 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from xgboost import XGBRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from xgboost import XGBClassifier
+
+warnings.filterwarnings("ignore")
+
+# Suppress TensorFlow logs
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.models import Sequential
 
 
 class EnergyModels:
     def __init__(self):
+        # Cell 0 models
         self.rf_regressor: RandomForestRegressor | None = None
         self.rf_classifier: RandomForestClassifier | None = None
-        self.xgb_forecaster: XGBRegressor | None = None
-        self._last_3: np.ndarray | None = None
-        self._next_dow: int = 2
-        self._next_is_weekend: int = 0
+
+        # Cell 1 models
+        self.xgb_classifier: XGBClassifier | None = None
+        self.lstm_model: Sequential | None = None
+        self.scaler: MinMaxScaler = MinMaxScaler(feature_range=(0, 1))
+
+        self._scaled_energy: np.ndarray | None = None
+        self._look_back: int = 3
 
     def train(self, df: pd.DataFrame) -> None:
-        # Random Forest — production only (day features removed from what-if)
-        features = ["Production"]
+        # ── Cell 0: RF Regressor + RF Classifier (with train_test_split) ──
+        features = ["Production", "DayOfWeek", "IsWeekend"]
         X = df[features]
+        y_total_energy = df["Total_Energy"]
+        y_dg_active = df["DG_Active"]
+
+        X_train, _, y_energy_train, _, y_dg_train, _ = (
+            train_test_split(X, y_total_energy, y_dg_active, test_size=0.2, random_state=42)
+        )
 
         self.rf_regressor = RandomForestRegressor(n_estimators=100, random_state=42)
-        self.rf_regressor.fit(X, df["Total_Energy"])
+        self.rf_regressor.fit(X_train, y_energy_train)
 
         self.rf_classifier = RandomForestClassifier(
             n_estimators=100, random_state=42, class_weight="balanced"
         )
-        self.rf_classifier.fit(X, df["DG_Active"])
+        self.rf_classifier.fit(X_train, y_dg_train)
 
-        # XGBoost time-series forecaster with lag features (replaces LSTM)
+        # ── Cell 1: XGBoost Classifier (lag1, lag2 → DG_Active) ──
         df2 = df.copy()
-        for lag in (1, 2, 3):
-            df2[f"Lag{lag}"] = df2["Total_Energy"].shift(lag)
-        df2 = df2.dropna(subset=["Lag1", "Lag2", "Lag3"])
+        df2["Total_Energy_Lag1"] = df2["Total_Energy"].shift(1)
+        df2["Total_Energy_Lag2"] = df2["Total_Energy"].shift(2)
+        df_xgb = df2.dropna(subset=["Total_Energy_Lag1", "Total_Energy_Lag2"])
 
-        X_ts = df2[["Lag1", "Lag2", "Lag3", "DayOfWeek", "IsWeekend"]]
-        y_ts = df2["Total_Energy"]
+        X_xgb = df_xgb[["Total_Energy_Lag1", "Total_Energy_Lag2"]]
+        y_xgb = df_xgb["DG_Active"]
 
-        self.xgb_forecaster = XGBRegressor(n_estimators=200, learning_rate=0.05, random_state=42)
-        self.xgb_forecaster.fit(X_ts, y_ts)
+        self.xgb_classifier = XGBClassifier(eval_metric="logloss", random_state=42)
+        self.xgb_classifier.fit(X_xgb, y_xgb)
 
-        # Store state for next-day inference
-        self._last_3 = df["Total_Energy"].values[-3:]
-        last_dow = int(df["DayOfWeek"].values[-1])
-        self._next_dow = (last_dow + 1) % 7
-        self._next_is_weekend = 1 if self._next_dow >= 5 else 0
+        # ── Cell 1: LSTM (3-day lookback → next-day energy forecast) ──
+        self._scaled_energy = self.scaler.fit_transform(df[["Total_Energy"]])
+
+        X_lstm, y_lstm = [], []
+        for i in range(len(self._scaled_energy) - self._look_back):
+            X_lstm.append(self._scaled_energy[i : i + self._look_back, 0])
+            y_lstm.append(self._scaled_energy[i + self._look_back, 0])
+
+        X_lstm = np.reshape(np.array(X_lstm), (-1, self._look_back, 1))
+        y_lstm = np.array(y_lstm)
+
+        self.lstm_model = Sequential([
+            LSTM(50, return_sequences=False, input_shape=(self._look_back, 1)),
+            Dense(25),
+            Dense(1),
+        ])
+        self.lstm_model.compile(optimizer="adam", loss="mean_squared_error")
+        self.lstm_model.fit(X_lstm, y_lstm, batch_size=1, epochs=10, verbose=0)
+
+        print("[DigiTwin] LSTM trained successfully.")
 
     def forecast_tomorrow(self) -> float:
-        assert self.xgb_forecaster is not None and self._last_3 is not None
-        X = pd.DataFrame(
-            [
-                {
-                    "Lag1": float(self._last_3[-1]),
-                    "Lag2": float(self._last_3[-2]),
-                    "Lag3": float(self._last_3[-3]),
-                    "DayOfWeek": self._next_dow,
-                    "IsWeekend": self._next_is_weekend,
-                }
-            ]
-        )
-        return float(self.xgb_forecaster.predict(X)[0])
+        """LSTM forecast — uses last 3 days of scaled energy."""
+        assert self.lstm_model is not None and self._scaled_energy is not None
+        last_3 = self._scaled_energy[-self._look_back :]
+        last_3_reshaped = np.reshape(last_3, (1, self._look_back, 1))
+        predicted_scaled = self.lstm_model.predict(last_3_reshaped, verbose=0)
+        return float(self.scaler.inverse_transform(predicted_scaled)[0][0])
 
-    def predict_whatif(self, production: int) -> tuple[float, int, float]:
+    def predict_whatif(self, production: int, day_of_week: int = 2) -> tuple[float, int, float]:
+        """RF Regressor + Classifier for what-if scenario prediction."""
         assert self.rf_regressor is not None and self.rf_classifier is not None
-        X = pd.DataFrame([{"Production": production}])
+        is_weekend = 1 if day_of_week >= 5 else 0
+        X = pd.DataFrame(
+            [{"Production": production, "DayOfWeek": day_of_week, "IsWeekend": is_weekend}]
+        )
         energy = float(self.rf_regressor.predict(X)[0])
         dg_active = int(self.rf_classifier.predict(X)[0])
         dg_prob = float(self.rf_classifier.predict_proba(X)[0][1])

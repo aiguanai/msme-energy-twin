@@ -75,6 +75,6 @@ export const api = {
   forecast: () => get<Forecast>('/api/forecast'),
   schedule: () => get<Schedule>('/api/schedule'),
   anomalies: () => get<AnomalyRecord[]>('/api/anomalies'),
-  whatif: (production: number) =>
-    get<WhatIf>(`/api/whatif?production=${production}`),
+  whatif: (production: number, dayOfWeek = 2) =>
+    get<WhatIf>(`/api/whatif?production=${production}&day_of_week=${dayOfWeek}`),
 }

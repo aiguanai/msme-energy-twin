@@ -4,18 +4,20 @@ import pandas as pd
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from data import CO2_FACTOR, DG_RATE, EB_RATE, SAFE_GRID_LIMIT, compute_kpis, load_data
+from data import CO2_FACTOR, DG_RATE, EB_RATE, compute_kpis, load_data, safe_grid_limit
 from models import models
 
 _df: pd.DataFrame | None = None
+_safe_limit: float = 9740.0  # overwritten at startup from data
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _df
+    global _df, _safe_limit
     _df = load_data()
+    _safe_limit = safe_grid_limit(_df)
     models.train(_df)
-    print(f"[DigiTwin] Loaded {len(_df)} records — models ready.")
+    print(f"[DigiTwin] Loaded {len(_df)} records — Safe Grid Limit: {_safe_limit} kWh — models ready.")
     yield
 
 
@@ -51,14 +53,14 @@ def get_history():
 @app.get("/api/forecast")
 def get_forecast():
     predicted = models.forecast_tomorrow()
-    safe = predicted <= SAFE_GRID_LIMIT
+    safe = predicted <= _safe_limit
 
     if safe:
         projected_cost = predicted * EB_RATE
         recommendation = None
     else:
-        dg_load = predicted - SAFE_GRID_LIMIT
-        cost_unoptimized = SAFE_GRID_LIMIT * EB_RATE + dg_load * DG_RATE
+        dg_load = predicted - _safe_limit
+        cost_unoptimized = _safe_limit * EB_RATE + dg_load * DG_RATE
         cost_optimized = predicted * EB_RATE
         projected_cost = cost_unoptimized
         recommendation = {
@@ -72,7 +74,7 @@ def get_forecast():
         "predicted_kwh": round(predicted, 2),
         "safe": safe,
         "projected_cost": round(projected_cost, 2),
-        "safe_grid_limit": SAFE_GRID_LIMIT,
+        "safe_grid_limit": _safe_limit,
         "recommendation": recommendation,
     }
 
@@ -80,7 +82,7 @@ def get_forecast():
 @app.get("/api/schedule")
 def get_schedule():
     predicted = models.forecast_tomorrow()
-    safe = predicted <= SAFE_GRID_LIMIT
+    safe = predicted <= _safe_limit
 
     slots = [
         {"slot": "00:00–06:00", "label": "Night", "base_load": 30},
@@ -108,12 +110,15 @@ def get_schedule():
 
 
 @app.get("/api/whatif")
-def get_whatif(production: int = Query(default=4500, ge=1000, le=8000)):
-    energy, dg_active, dg_prob = models.predict_whatif(production)
-    safe = energy <= SAFE_GRID_LIMIT
+def get_whatif(
+    production: int = Query(default=4500, ge=1000, le=8000),
+    day_of_week: int = Query(default=2, ge=0, le=6),
+):
+    energy, dg_active, dg_prob = models.predict_whatif(production, day_of_week)
+    safe = energy <= _safe_limit
 
-    eb_units = min(energy, SAFE_GRID_LIMIT) if dg_active else energy
-    dg_units = max(0.0, energy - SAFE_GRID_LIMIT) if dg_active else 0.0
+    eb_units = min(energy, _safe_limit) if dg_active else energy
+    dg_units = max(0.0, energy - _safe_limit) if dg_active else 0.0
     cost = eb_units * EB_RATE + dg_units * DG_RATE
     co2 = dg_units * CO2_FACTOR
 
