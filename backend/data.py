@@ -12,7 +12,8 @@ COL_NAMES = ["Date", "Production", "EB_Units", "DG_Units", "Total_Energy", "Cost
 
 EB_RATE      = 6
 DG_RATE      = 15
-CO2_FACTOR   = 0.8
+CO2_FACTOR      = 0.8     # diesel-generator emission factor (kg CO2/kWh)
+GRID_CO2_FACTOR = 0.7117  # representative regional grid carbon intensity (kg CO2/kWh)
 SAFETY_MARGIN = 0.95  # 5% below max observed EB energy
 
 
@@ -37,11 +38,8 @@ def load_data() -> pd.DataFrame:
     df["IsWeekend"]  = (df["DayOfWeek"] >= 5).astype(int)
     df["DG_Active"]  = (df["DG_Units"] > 0).astype(int)
 
-    # Anomaly detection: days where energy deviates >2σ from 7-day rolling mean
-    rolling      = df["Total_Energy"].rolling(7, min_periods=3)
-    rolling_mean = rolling.mean()
-    rolling_std  = rolling.std().fillna(1)
-    df["Anomaly"] = (abs(df["Total_Energy"] - rolling_mean) > 2 * rolling_std).astype(int)
+    # "Expected" and "Anomaly" columns are added by models.train() —
+    # residual-based detection against the RF regressor (cross-validated).
 
     return df
 
@@ -51,7 +49,10 @@ def compute_kpis(df: pd.DataFrame) -> dict:
     total_eb     = float(df["EB_Units"].sum())
     total_dg     = float(df["DG_Units"].sum())
     total_cost   = float(df["Cost_RS"].sum())   # pre-computed by teammates
-    total_co2    = float(df["CO2_kg"].sum())     # pre-computed by teammates
+    # Total carbon footprint = grid emissions + diesel-generator emissions.
+    grid_co2     = total_eb * GRID_CO2_FACTOR
+    dg_co2       = total_dg * CO2_FACTOR
+    total_co2    = grid_co2 + dg_co2
     dg_days      = int(df["DG_Active"].sum())
     grid_pct     = round((total_eb / total_energy * 100) if total_energy > 0 else 100.0, 1)
 
@@ -59,6 +60,8 @@ def compute_kpis(df: pd.DataFrame) -> dict:
         "total_energy_kwh": round(total_energy, 2),
         "total_cost_rs":    round(total_cost, 2),
         "co2_kg":           round(total_co2, 2),
+        "co2_grid_kg":      round(grid_co2, 2),
+        "co2_dg_kg":        round(dg_co2, 2),
         "grid_pct":         grid_pct,
         "dg_days":          dg_days,
         "total_days":       len(df),

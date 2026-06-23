@@ -3,10 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MSME Digital Twin — Energy Intelligence</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <title>Watchtower — Energy Intelligence</title>
+    <!-- Critical inline background so the page paints dark instantly,
+         before the bundle/CSS load (avoids a white flash on open). -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        background-color: #090b11;
+      }
+      #root {
+        min-height: 100vh;
+      }
+    </style>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2322D3EE' d='M13 2 4 14h6l-1 8 9-12h-6l1-8z'/%3E%3C/svg%3E"
+    />
+    <!-- Fonts are self-hosted via @font-face in index.css (no CDN dependency). -->
+    <link rel="preload" href="/fonts/hanken-500.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/space-700.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

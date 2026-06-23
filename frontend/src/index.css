@@ -2,27 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Self-hosted fonts (identical to the design source, no CDN dependency) */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/hanken-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/hanken-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/hanken-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/hanken-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('/fonts/hanken-800.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/space-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/space-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/space-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/space-700.woff2') format('woff2');
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background-color: #0a0f1e;
-  color: white;
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #090b11;
+  color: #eaf0f7;
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Dot grid background */
+::selection {
+  background: rgba(45, 212, 191, 0.28);
+}
+
+/* Ambient aurora: drifting teal + indigo + violet glow behind everything */
 body::before {
   content: '';
   position: fixed;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
+  top: -340px;
+  left: 50%;
+  width: 1200px;
+  height: 1000px;
+  transform: translateX(-50%);
   pointer-events: none;
   z-index: 0;
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 50%, rgba(45, 212, 191, 0.16), transparent 62%),
+    radial-gradient(ellipse 42% 46% at 64% 40%, rgba(129, 140, 248, 0.13), transparent 60%),
+    radial-gradient(ellipse 38% 42% at 34% 46%, rgba(167, 139, 250, 0.1), transparent 60%);
+  animation: wt-drift 16s ease-in-out infinite;
+}
+
+/* Soft top vignette */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(45, 212, 191, 0.05), transparent 70%);
 }
 
 #root {
@@ -30,52 +116,149 @@ body::before {
   z-index: 1;
 }
 
-/* Glassmorphism card */
+/* Card: layered gradient surface with inset highlight + soft drop shadow */
 .glass-card {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: linear-gradient(165deg, #151a22, #0f131b);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 24px 50px -32px rgba(0, 0, 0, 0.85);
 }
 
-/* Gradient border wrapper */
-.gradient-border {
-  padding: 1px;
-  border-radius: 17px;
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.35), rgba(255, 255, 255, 0.05), rgba(0, 212, 255, 0.15));
+/* Glow accents */
+.glow-cyan {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 70px -30px rgba(45, 212, 191, 0.4),
+    0 34px 70px -40px rgba(0, 0, 0, 0.9);
 }
 
-.gradient-border-inner {
-  background: #0d1527;
-  border-radius: 16px;
-  height: 100%;
+.glow-magenta {
+  box-shadow: 0 0 44px rgba(167, 139, 250, 0.16);
 }
 
-/* Custom range slider */
+.text-glow-cyan {
+  text-shadow: 0 0 28px rgba(45, 212, 191, 0.5);
+}
+
+.text-glow-amber {
+  text-shadow: 0 0 28px rgba(251, 191, 36, 0.5);
+}
+
+/* Neon stroke glow for chart lines/areas */
+.stroke-glow-cyan {
+  filter: drop-shadow(0 0 5px rgba(45, 212, 191, 0.55));
+}
+
+.stroke-glow-magenta {
+  filter: drop-shadow(0 0 5px rgba(167, 139, 250, 0.55));
+}
+
+.stroke-glow-amber {
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.5));
+}
+
+.stroke-glow-emerald {
+  filter: drop-shadow(0 0 5px rgba(52, 211, 153, 0.5));
+}
+
+/* Static logo glow (cheap: painted once, no per-frame filter animation) */
+.logo-glow {
+  filter: drop-shadow(0 0 12px rgba(45, 212, 191, 0.55));
+}
+
+/* Wordmark image: lift the faint art so it reads on the dark background */
+.wordmark-img {
+  filter: brightness(1.9) saturate(1.15) drop-shadow(0 0 9px rgba(45, 212, 191, 0.45));
+}
+
+/* Rotating conic radar sweep (used in the intro splash) */
+.radar-sweep {
+  background: conic-gradient(
+    from 0deg,
+    rgba(0, 0, 0, 0) 0deg,
+    rgba(0, 0, 0, 0) 268deg,
+    rgba(45, 212, 191, 0.28) 332deg,
+    rgba(45, 212, 191, 0.7) 360deg
+  );
+  border-radius: 9999px;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.scan-ring {
+  will-change: transform, opacity;
+}
+
+/* Scroll-entrance. Hiding is applied inline by the useReveal hook (JS-driven). */
+.reveal-in {
+  animation: fade-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Hover lift for interactive cards */
+.lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 0 44px -16px rgba(45, 212, 191, 0.35),
+    0 30px 56px -34px rgba(0, 0, 0, 0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ping,
+  .animate-pulse,
+  .radar-sweep,
+  [class*='animate-radar-sweep'],
+  [class*='animate-wt-drift'],
+  [class*='animate-wt-pulse'],
+  [class*='animate-wt-ring'],
+  [class*='animate-scan-reveal'],
+  [class*='animate-fade-rise'] {
+    animation: none !important;
+  }
+  .reveal,
+  .reveal-in {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+  .lift:hover {
+    transform: none;
+  }
+  body::before {
+    animation: none;
+  }
+}
+
+/* Custom range slider: teal fill + glowing thumb */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  height: 5px;
   border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
   outline: none;
 }
 
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: #00d4ff;
+  background: #0b0e14;
+  border: 2px solid #5eead4;
   cursor: pointer;
-  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.25);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.06), 0 0 14px rgba(45, 212, 191, 0.7);
   transition: box-shadow 0.2s;
 }
 
 input[type='range']::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 6px rgba(0, 212, 255, 0.2);
+  box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.05), 0 0 18px rgba(45, 212, 191, 0.9);
 }
 
 /* Recharts overrides for dark theme */
@@ -85,7 +268,7 @@ input[type='range']::-webkit-slider-thumb:hover {
 }
 
 .recharts-text {
-  fill: #64748b !important;
+  fill: #5e6b7e !important;
   font-size: 11px !important;
 }
 
@@ -95,12 +278,13 @@ input[type='range']::-webkit-slider-thumb:hover {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  background: rgba(45, 212, 191, 0.25);
+  border-radius: 99px;
 }

@@ -1,4 +1,5 @@
 import type { HistoryRecord } from '../api/client'
+import InfoTip from './InfoTip'
 import {
   Area,
   AreaChart,
@@ -35,21 +36,24 @@ export default function EnergyChart({ data }: Props) {
   const display = data.slice(-30)
 
   return (
-    <div className="glass-card p-6">
+    <div className="glass-card lift p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-[15px] font-semibold text-white">Energy Trend</h2>
-          <p className="text-[12px] text-slate-500 mt-0.5">Last {display.length} days — EB, DG & Total consumption</p>
+          <p className="text-[12px] text-slate-500 mt-0.5">Last {display.length} days: EB, DG & Total consumption</p>
         </div>
-        <span className="text-[11px] text-slate-500 bg-white/5 rounded-full px-3 py-1">Daily · kWh</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-slate-500 bg-white/5 rounded-full px-3 py-1">Daily · kWh</span>
+          <InfoTip text="Daily consumption history split by source: grid supply (EB), diesel generator supply (DG), and their total. DG area rising above zero marks the expensive days." />
+        </div>
       </div>
 
       <ResponsiveContainer width="100%" height={240}>
         <AreaChart data={display} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#00d4ff" stopOpacity={0.25} />
-              <stop offset="100%" stopColor="#00d4ff" stopOpacity={0} />
+              <stop offset="0%" stopColor="#2dd4bf" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="#2dd4bf" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="gradEB" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#10b981" stopOpacity={0.2} />
@@ -92,11 +96,12 @@ export default function EnergyChart({ data }: Props) {
             type="monotone"
             dataKey="Total_Energy"
             name="Total"
-            stroke="#00d4ff"
+            stroke="#2dd4bf"
             strokeWidth={2}
+            className="stroke-glow-cyan"
             fill="url(#gradTotal)"
             dot={false}
-            animationDuration={1000}
+            isAnimationActive={false}
           />
           <Area
             type="monotone"
@@ -104,9 +109,10 @@ export default function EnergyChart({ data }: Props) {
             name="Grid (EB)"
             stroke="#10b981"
             strokeWidth={1.5}
+            className="stroke-glow-emerald"
             fill="url(#gradEB)"
             dot={false}
-            animationDuration={1000}
+            isAnimationActive={false}
           />
           <Area
             type="monotone"
@@ -114,9 +120,10 @@ export default function EnergyChart({ data }: Props) {
             name="DG"
             stroke="#f59e0b"
             strokeWidth={1.5}
+            className="stroke-glow-amber"
             fill="url(#gradDG)"
             dot={false}
-            animationDuration={1000}
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

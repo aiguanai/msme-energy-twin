@@ -18,6 +18,24 @@ msme_data.xlsx
 EB AND DG -2026 POWER CONSUMPTIO.xlsx
 model.ipynb
 digitaltwin.txt
+*.tex
+generate_graphs.py
+figures/
+Main.pdf
+report_corrections.txt
+# ── Design reference files ────────────────────────────────
+Watchtower Dashboard.html
+Watchtower Dashboard.dc.html
+
+# ── Branding originals (duplicates; frontend assets in public/) ──
+/logo.png
+/logo_icon.png
+/logo_name.png
+
+# ── Model cache ───────────────────────────────────────────
+backend/*.keras
+backend/*.joblib
+backend/model_metrics.json
 
 # ── Environment & secrets ─────────────────────────────────
 .env

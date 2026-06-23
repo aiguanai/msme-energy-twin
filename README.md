@@ -1,4 +1,4 @@
-# msme-energy-twin
+# Watchtower
 
 **AI-Driven Digital Twin for Smart Energy Optimization in MSMEs Using IoT-Based Energy Analytics**
 
@@ -10,13 +10,15 @@ An interdisciplinary project that builds an intelligent energy management system
 
 A full-stack web application that wraps trained ML models into a live, interactive decision-support dashboard:
 
-- **KPI Dashboard** — Animated summary cards for total energy, cost, CO₂, grid utilisation, and DG activation days
-- **Energy Trend** — 30-day area chart showing EB, DG, and total consumption history
-- **AI Forecast** — LSTM time-series model predicts tomorrow's energy demand with a SAFE / DG Risk status badge
-- **Load Balancing** — Cost comparison between unoptimised (DG-triggered) and optimised (load-shifted) plans with exact savings
-- **AI Schedule Advisor** — Hour-by-hour production load recommendations with plain-English operational guidance
-- **What-If Simulator** — Interactive slider + day-of-week selector; Random Forest predicts energy, DG probability, cost and CO₂ live
-- **Anomaly Detection** — Line chart flagging days with consumption deviating >2σ from the 7-day rolling mean
+- **Forecast Hero**: LSTM predicts the next 7 days of energy demand with a 95% uncertainty band, SAFE / DG Risk status, and load-shift savings
+- **KPI Strip**: Total energy, cost, CO₂, grid utilisation, and DG activation days
+- **Energy Trend**: 30-day area chart showing EB, DG, and total consumption history
+- **AI Schedule Advisor**: Hour-by-hour production load recommendations with plain-English operational guidance
+- **What-If Simulator**: Interactive slider + day-of-week selector; Random Forest predicts energy, DG probability, cost and CO₂ live
+- **Anomaly Detection**: Actual vs expected energy per day (cross-validated RF residuals); flags days whose consumption deviates >2σ from what their production level justifies
+- **Model Performance**: Honest holdout metrics: RF MAE / DG accuracy, and the LSTM benchmarked against naive persistence and a 7-day moving average
+
+The UI uses **Aurora** dark theme: void-black (`#090B11`) surfaces with teal/violet accents, observatory glow effects, and bold entrance animations.
 
 ---
 
@@ -28,7 +30,7 @@ A full-stack web application that wraps trained ML models into a live, interacti
 | Random Forest Classifier | sklearn | Classifies whether DG will activate |
 | LSTM (50 units, 3-day lookback) | TensorFlow / Keras | Time-series forecast of next-day energy demand |
 
-Safe Grid Limit is derived from data: **95% × max observed EB energy** — not hardcoded.
+Safe Grid Limit is derived from data: **95% × max observed EB energy**, not hardcoded.
 
 ---
 
@@ -39,7 +41,6 @@ Safe Grid Limit is derived from data: **95% × max observed EB energy** — not 
 - FastAPI + Uvicorn
 - TensorFlow / Keras (LSTM forecaster)
 - scikit-learn (Random Forest Regressor + Classifier)
-- XGBoost
 - pandas, openpyxl
 
 **Frontend**
@@ -53,28 +54,36 @@ Safe Grid Limit is derived from data: **95% × max observed EB energy** — not 
 ## Project Layout
 
 ```
-msme-energy-twin/
+Watchtower/
 ├── backend/
 │   ├── data.py          # Loads msme_data.xlsx, computes KPIs + dynamic safe grid limit
-│   ├── models.py        # Trains RF (Cell 0) + XGBoost + LSTM (Cell 1) at startup
-│   ├── main.py          # FastAPI app — 6 REST endpoints
-│   └── requirements.txt
+│   ├── models.py        # Trains RF + LSTM at startup (LSTM cached on disk)
+│   ├── main.py          # FastAPI app, 7 REST endpoints
+│   ├── requirements.txt
+│   └── *.keras, *.joblib  # Model cache (generated at runtime)
 ├── frontend/
 │   ├── src/
 │   │   ├── api/client.ts          # Typed fetch wrappers for all endpoints
 │   │   ├── components/
 │   │   │   ├── Header.tsx
-│   │   │   ├── KPICard.tsx
-│   │   │   ├── EnergyChart.tsx
-│   │   │   ├── ForecastPanel.tsx
-│   │   │   ├── LoadBalance.tsx
-│   │   │   ├── ScheduleAdvisor.tsx
-│   │   │   ├── WhatIfSimulator.tsx
-│   │   │   └── AnomalyChart.tsx
+│   │   │   ├── IntroSplash.tsx    # Full-screen radar scan intro + fade transition
+│   │   │   ├── ForecastHero.tsx   # 7-day forecast with uncertainty band + load-shift recommendation
+│   │   │   ├── KPIStrip.tsx       # Energy, cost, CO₂, grid %, DG days
+│   │   │   ├── EnergyChart.tsx    # 30-day history trend
+│   │   │   ├── ScheduleAdvisor.tsx # Hourly load recommendations
+│   │   │   ├── WhatIfSimulator.tsx # Interactive RF prediction
+│   │   │   ├── AnomalyChart.tsx   # Anomaly detection
+│   │   │   ├── ModelMetricsCard.tsx # Benchmark: RF + LSTM vs baselines
+│   │   │   └── InfoTip.tsx        # Tooltip component
+│   │   ├── hooks/useReveal.ts     # Scroll-triggered entrance animation
 │   │   └── App.tsx
-│   ├── tailwind.config.js
+│   ├── public/
+│   │   ├── logo_icon.png, logo_name.png   # Branding assets
+│   │   └── fonts/                 # Self-hosted woff2 fonts (Hanken Grotesk, Space Grotesk)
+│   ├── src/index.css              # Global styles: Aurora theme, animations, glow effects
+│   ├── tailwind.config.js         # Theme colors, typography, animations
 │   └── vite.config.ts
-├── msme_data.xlsx        # ⚠ Not tracked by git — add manually (see Setup)
+├── msme_data.xlsx        # ⚠ Not tracked by git, add manually (see Setup)
 └── .gitignore
 ```
 
@@ -129,7 +138,7 @@ npm install
 
 Open **two terminals** from the project root.
 
-**Terminal 1 — Backend**
+**Terminal 1: Backend**
 ```bash
 cd backend
 venv\Scripts\activate      # Windows
@@ -138,11 +147,16 @@ uvicorn main:app --reload --port 8080
 
 On startup you will see:
 ```
-[DigiTwin] LSTM trained successfully.
-[DigiTwin] Loaded 59 records — Safe Grid Limit: 9742.25 kWh — models ready.
+[DigiTwin] RF eval (temporal 80/20) | MAE: ... kWh | DG accuracy: ...%
+[DigiTwin] LSTM benchmark (last 20%) | LSTM MAE: ... kWh vs naive: ... kWh, 7-day MA: ... kWh
+[DigiTwin] LSTM trained and cached.
+[DigiTwin] Loaded 59 records | Safe Grid Limit: 9742.25 kWh | models ready.
 ```
 
-**Terminal 2 — Frontend**
+> The LSTM is cached to `backend/lstm_model.keras`; subsequent restarts load it from disk
+> ("LSTM loaded from cache.") and retrain only when `msme_data.xlsx` changes.
+
+**Terminal 2: Frontend**
 ```bash
 cd frontend
 npm run dev
@@ -156,26 +170,14 @@ Open **http://localhost:5173** in your browser.
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/kpis` | Baseline KPIs — total energy, cost, CO₂, grid %, DG days |
+| `GET /api/kpis` | Baseline KPIs: total energy, cost, CO₂, grid %, DG days |
 | `GET /api/history` | Full daily history for energy trend charts |
-| `GET /api/forecast` | LSTM next-day demand prediction + load-shift recommendation |
+| `GET /api/forecast` | LSTM 7-day demand forecast with uncertainty band + load-shift recommendation |
 | `GET /api/schedule` | Hourly production schedule optimised against forecast |
 | `GET /api/whatif?production=4500` | RF prediction for any production + day-of-week scenario |
-| `GET /api/anomalies` | Days flagged as anomalous (>2σ from 7-day rolling mean) |
+| `GET /api/anomalies` | Actual vs expected energy per day; anomalies = >2σ residual vs production level |
+| `GET /api/models/metrics` | Holdout metrics: RF MAE/accuracy, LSTM vs naive vs 7-day MA |
 
 Interactive API docs: **http://localhost:8080/docs**
 
 ---
-
-## Data
-
-Source: `Project_Calcs` sheet of `msme_data.xlsx` — 59 days (January–February 2026) with real production values, EB/DG units, cost, and CO₂ pre-computed by the team.
-
-| KPI | Value |
-|---|---|
-| Total Energy | 526,625 kWh |
-| Total Cost | Rs 3,230,130 |
-| CO₂ Emissions | 6,256 kg |
-| Grid Utilisation | 98.5% |
-| DG Activation Days | 6 |
-| Safe Grid Limit | 9,742 kWh (derived from data) |
